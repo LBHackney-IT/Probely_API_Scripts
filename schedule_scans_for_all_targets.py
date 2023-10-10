@@ -7,16 +7,53 @@ from urllib.parse import urljoin
 from datetime import datetime
 from datetime import timedelta
 
-def main():
-    token = input("API Token:")
+API_BASE_URL = "https://api.probely.com"
 
-    headers = {"Authorization": "JWT {}".format(token)}
+def api_headers(api_token):
+    return {"Authorization": "JWT {}".format(api_token)}
 
-    api_base_url = "https://api.probely.com"
-    targets_endpoint = urljoin(
-        api_base_url, "targets/?include=compliance&length=10000"
+# def flatten_scan_response(scheduled_scan):
+#     return {
+#         "id": scheduled_scan["id"],
+#         "target_id": scheduled_scan["target"]["id"],
+#         "target_name": scheduled_scan["target"]["site"]["name"]
+#     }
+
+def get_scheduled_scans(api_token):
+    scheduled_scans_endpoint = urljoin(
+        API_BASE_URL, "scheduledscans/?length=10000"
     )
 
+    headers = api_headers(api_token)
+    response = requests.get(scheduled_scans_endpoint, headers=headers)
+    print(response.content)
+    # results = list(map(flatten_scan_response, response.json()["results"]))
+
+    targets = {}
+    for scheduled_scan in response.json()["results"]:
+        target_id = scheduled_scan["target"]["id"]
+        if target_id not in targets:
+            targets[target_id] = {
+                "id": target_id,
+                "name": scheduled_scan["target"]["site"]["name"],
+                "scheduled_scans": []
+            }
+
+        targets[target_id]["schedule_scans"].append({
+            scheduled_scan["id"]
+        })
+    print(results)
+
+def main():
+    api_token = input("API Token:")
+    
+    get_scheduled_scans(api_token=api_token)
+    quit()
+
+    targets_endpoint = urljoin(
+        API_BASE_URL, "targets/?include=compliance&length=10000"
+    )
+    headers = api_headers(api_token)
     response = requests.get(targets_endpoint, headers=headers)
     results = response.json()["results"]
 
@@ -65,15 +102,15 @@ def main():
 
         target_id = result["id"]
         scheduled_scan_url = urljoin(
-            api_base_url, f"targets/{target_id}/scheduledscans/"
+            API_BASE_URL, f"targets/{target_id}/scheduledscans/"
         )
 
         # Send the new scheduled scan to Probely
-        response = requests.post(
-            scheduled_scan_url,
-            headers=headers,
-            json=schedule_payload,
-        )
+        # response = requests.post(
+        #     scheduled_scan_url,
+        #     headers=headers,
+        #     json=schedule_payload,
+        # )
 
         # print(scheduled_scan_url)
         print(schedule_payload)
