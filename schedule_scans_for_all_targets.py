@@ -26,7 +26,7 @@ def get_scheduled_scans(api_token):
 
     headers = api_headers(api_token)
     response = requests.get(scheduled_scans_endpoint, headers=headers)
-    print(response.content)
+    # print(response.content)
     # results = list(map(flatten_scan_response, response.json()["results"]))
 
     targets = {}
@@ -39,10 +39,10 @@ def get_scheduled_scans(api_token):
                 "scheduled_scans": []
             }
 
-        targets[target_id]["schedule_scans"].append({
+        targets[target_id]["scheduled_scans"].append({
             scheduled_scan["id"]
         })
-    print(results)
+    # print(results)
 
 def main():
     api_token = input("API Token:")
@@ -113,9 +113,9 @@ def main():
         # )
 
         # print(scheduled_scan_url)
-        print(schedule_payload)
-        print(response.status_code)
-        print(response.reason)
+        # print(schedule_payload)
+        # print(response.status_code)
+        # print(response.reason)
         # print(response.content)
 
 
