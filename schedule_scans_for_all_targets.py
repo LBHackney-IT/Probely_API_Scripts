@@ -19,7 +19,7 @@ def api_headers(api_token):
 #         "target_name": scheduled_scan["target"]["site"]["name"]
 #     }
 
-def get_scheduled_scans(api_token):
+def target_schedules(api_token):
     scheduled_scans_endpoint = urljoin(
         API_BASE_URL, "scheduledscans/?length=10000"
     )
@@ -40,22 +40,89 @@ def get_scheduled_scans(api_token):
             }
 
         targets[target_id]["scheduled_scans"].append({
-            scheduled_scan["id"]
+            "id": scheduled_scan["id"],
+            "next_scan": scheduled_scan["date_time"],
+            "recurrence": scheduled_scan["recurrence"],
         })
-    # print(results)
+           
+    return targets
 
 def main():
     api_token = input("API Token:")
     
-    get_scheduled_scans(api_token=api_token)
+    targets = target_schedules(api_token=api_token)
+
+    # update the schedules for all the targets
+    #
+
+    # Given timestamp in string
+    time_str = '23/9/2023 00:00:00'
+    date_format_str = '%d/%m/%Y %H:%M:%S'
+
+    # create datetime object from timestamp string
+    start_time = datetime.strptime(time_str, date_format_str)
+    minutes_to_add_each_time = 5
+
+    for target_id, target in targets.items():
+        target_name = target["name"]
+
+        start_time = start_time + timedelta(minutes=minutes_to_add_each_time)
+
+        # Convert datetime object to string in the format Probely needs 
+        schedule_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        # Create a payload to create a scheduled scan. 
+        # See https://developers.probely.com/#tag/Scheduled-Scans/operation/targets_scheduledscans_create
+        schedule_payload = {
+            "date_time": schedule_time_str,
+            "recurrence": "w", # weekly
+            "timezone": "UTC",
+        }
+
+        target_id = target["id"]
+        
+        schedule_count = len(target["scheduled_scans"])
+        
+        if schedule_count > 1:
+            print(f"ERROR: multiple scheduled scans found for target '{target_name}'")
+        elif schedule_count == 1:
+            old_schedule = target["scheduled_scans"][0]["next_scan"]
+            old_recurrence = target["scheduled_scans"][0]["recurrence"]
+            print(f"Updating schedule for {target_name} from {old_schedule} ({old_recurrence}) to {schedule_payload}")
+            scheduled_scan_id = target["scheduled_scans"][0]["id"]
+            scheduled_scan_put_url = urljoin(API_BASE_URL, f"targets/{target_id}/scheduledscans/{scheduled_scan_id}")
+
+            # response = requests.put(
+            #     scheduled_scan_url,
+            #     headers=headers,
+            #     json=schedule_payload,
+            # )
+
+            # print(response.status_code)
+            # print(response.reason)
+            # print(response.content)
+        else:
+            print(f"Creating schedule for {target_name}: {schedule_payload}")
+            scheduled_scan_post_url = urljoin(API_BASE_URL, f"targets/{target_id}/scheduledscans/")
+
+            # response = requests.patch(
+            #     scheduled_scan_url,
+            #     headers=headers,
+            #     json=schedule_payload,
+            # )
+
+            # print(response.status_code)
+            # print(response.reason)
+            # print(response.content)
+        
     quit()
 
-    targets_endpoint = urljoin(
-        API_BASE_URL, "targets/?include=compliance&length=10000"
-    )
-    headers = api_headers(api_token)
-    response = requests.get(targets_endpoint, headers=headers)
-    results = response.json()["results"]
+    # targets_endpoint = urljoin(
+    #     API_BASE_URL, "targets/?include=compliance&length=10000"
+    # )
+    # headers = api_headers(api_token)
+    # response = requests.get(targets_endpoint, headers=headers)
+    # results = response.json()["results"]
 
         # target id
         # "date_time": "2019-08-24T14:15:22Z",
@@ -70,40 +137,32 @@ def main():
         # "reduced_scope": true,
         # "scan_profile": "lightning"
 
-    # Given timestamp in string
-    time_str = '23/9/2023 00:00:00'
-    date_format_str = '%d/%m/%Y %H:%M:%S'
+    # # Given timestamp in string
+    # time_str = '23/9/2023 00:00:00'
+    # date_format_str = '%d/%m/%Y %H:%M:%S'
 
-    # create datetime object from timestamp string
-    start_time = datetime.strptime(time_str, date_format_str)
-    minutes_to_add_each_time = 5
+    # # create datetime object from timestamp string
+    # start_time = datetime.strptime(time_str, date_format_str)
+    # minutes_to_add_each_time = 5
 
-    for result in results:
-        start_time = start_time + timedelta(minutes=minutes_to_add_each_time)
+    # for result in results:
+    #     start_time = start_time + timedelta(minutes=minutes_to_add_each_time)
 
-        # Convert datetime object to string in the format Probely needs 
-        schedule_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    #     # Convert datetime object to string in the format Probely needs 
+    #     schedule_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        # Create a payload to create a scheduled scan. 
-        # See https://developers.probely.com/#tag/Scheduled-Scans/operation/targets_scheduledscans_create
-        schedule_payload = {
-            "date_time": schedule_time_str,
-            "recurrence": "w", # weekly
-            "timezone": "UTC",
-            # "run_on_day_of_week":
-            # "scheduled_day_of_week": 6, # Saturday
-            # "week_index":
-            # "partial_scan": False
-            # "override_target_settings":
-            # "incremental":
-            # "reduced_scope":
-            # "scan_profile": # not set, as we'll use the target's settings
-        }
+    #     # Create a payload to create a scheduled scan. 
+    #     # See https://developers.probely.com/#tag/Scheduled-Scans/operation/targets_scheduledscans_create
+    #     schedule_payload = {
+    #         "date_time": schedule_time_str,
+    #         "recurrence": "w", # weekly
+    #         "timezone": "UTC",
+    #     }
 
-        target_id = result["id"]
-        scheduled_scan_url = urljoin(
-            API_BASE_URL, f"targets/{target_id}/scheduledscans/"
-        )
+    #     target_id = result["id"]
+    #     scheduled_scan_url = urljoin(
+    #         API_BASE_URL, f"targets/{target_id}/scheduledscans/"
+    #     )
 
         # Send the new scheduled scan to Probely
         # response = requests.post(
